@@ -1219,6 +1219,16 @@ NSString *const WMFLanguageVariantAlertsLibraryVersion = @"WMFLanguageVariantAle
                 [[self placesViewController] updateViewModeToMap];
                 [[self placesViewController] showArticleURL:articleURL];
             }
+
+            NSString *coordinateString = activity.wmf_coordinate;
+            if (coordinateString) {
+                CLLocation *location = [self locationFromCoordinateString:coordinateString];
+                if(location) {
+                    // For "View on a map" action to succeed, view mode has to be set to map.
+                    [[self placesViewController] updateViewModeToMap];
+                    [[self placesViewController] zoomAndPanMapViewToLocation:location];
+                }
+            }
         } break;
         case WMFUserActivityTypeContent: {
             [self dismissPresentedViewControllers];
@@ -1339,6 +1349,22 @@ NSString *const WMFLanguageVariantAlertsLibraryVersion = @"WMFLanguageVariantAle
     }
 
     return contentURL;
+}
+
+- (CLLocation *)locationFromCoordinateString:(NSString *)string {
+    NSArray *latLong = [string componentsSeparatedByString:@","];
+    if([latLong count] != 2) {
+        return nil;
+    }
+
+    double latitude = [latLong[0] doubleValue];
+    double longitude = [latLong[1] doubleValue];
+
+    if(latitude == 0 || longitude == 0) {
+        return nil;
+    }
+
+    return [[CLLocation alloc] initWithLatitude:latitude longitude:longitude];
 }
 
 #pragma mark - Utilities

@@ -61,16 +61,25 @@ __attribute__((annotate("returns_localized_nsstring"))) static inline NSString *
 
 + (instancetype)wmf_placesActivityWithURL:(NSURL *)activityURL {
     NSURLComponents *components = [NSURLComponents componentsWithURL:activityURL resolvingAgainstBaseURL:NO];
-    NSURL *articleURL = nil;
+    NSUserActivity *activity = [self wmf_pageActivityWithName:@"Places"];
+
+    if(!activity) {
+        return nil;
+    }
+
     for (NSURLQueryItem *item in components.queryItems) {
         if ([item.name isEqualToString:@"WMFArticleURL"]) {
             NSString *articleURLString = item.value;
-            articleURL = [NSURL URLWithString:articleURLString];
+            activity.webpageURL = [NSURL URLWithString:articleURLString];
+            break;
+        } else if ([item.name isEqualToString:@"WMFCoordinate"]) {
+            NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] initWithDictionary:activity.userInfo];
+            [userInfo addEntriesFromDictionary:@{@"WMFCoordinate": item.value}];
+            activity.userInfo = userInfo;
             break;
         }
     }
-    NSUserActivity *activity = [self wmf_pageActivityWithName:@"Places"];
-    activity.webpageURL = articleURL;
+
     return activity;
 }
 
@@ -266,6 +275,9 @@ __attribute__((annotate("returns_localized_nsstring"))) static inline NSString *
 
 - (NSURL *)wmf_contentURL {
     return self.userInfo[@"WMFURL"];
+}
+- (NSURL *)wmf_coordinate {
+    return self.userInfo[@"WMFCoordinate"];
 }
 
 + (NSURLComponents *)wmf_baseURLComponentsForActivityOfType:(WMFUserActivityType)type {
