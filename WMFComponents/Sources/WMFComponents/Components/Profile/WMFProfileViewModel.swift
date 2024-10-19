@@ -90,7 +90,7 @@ struct ProfileListItem: Identifiable {
     let hasNotifications: Bool?
     let isDonate: Bool
     let isLoadingDonateConfigs: Bool
-    let action: () -> ()?
+    let action: () -> Void?
 }
 
 struct ProfileSection: Identifiable {

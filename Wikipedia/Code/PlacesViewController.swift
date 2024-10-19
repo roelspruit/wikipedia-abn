@@ -56,6 +56,13 @@ class PlacesViewController: ViewController, UISearchBarDelegate, ArticlePopoverV
     fileprivate var performDefaultSearchOnNextMapRegionUpdate = false
     fileprivate var isMovingToRegion = false
 
+    // Actions that might be taken on the view before it has been loaded and that need to be performed once the view has been loaded
+    fileprivate enum AfterViewLoadAction {
+        case updateViewModeToMap
+        case zoomAndPanMapView(location: CLLocation)
+    }
+    fileprivate var afterViewLoadActions = [AfterViewLoadAction]()
+
     fileprivate var previouslySelectedArticlePlaceIdentifier: Int?
     fileprivate var didYouMeanSearch: PlaceSearch?
     fileprivate var searching: Bool = false
@@ -209,9 +216,24 @@ class PlacesViewController: ViewController, UISearchBarDelegate, ArticlePopoverV
         view.addGestureRecognizer(panGR)
         overlaySliderPanGestureRecognizer = panGR
 
+        performAfterViewLoadActions()
+
         self.view.layoutIfNeeded()
     }
-    
+
+    private func performAfterViewLoadActions() {
+        afterViewLoadActions.forEach { action in
+            switch action {
+            case .updateViewModeToMap:
+                updateViewModeToMap()
+            case .zoomAndPanMapView(let location):
+                panMapToNextLocationUpdate = false
+                zoomAndPanMapView(toLocation: location)
+            }
+        }
+        afterViewLoadActions = []
+    }
+
     override func viewWillAppear(_ animated: Bool) {
         
         // Update saved places locations
@@ -248,7 +270,7 @@ class PlacesViewController: ViewController, UISearchBarDelegate, ArticlePopoverV
             }
             return
         }
-        
+
         locationManager.startMonitoringLocation()
         mapView.showsUserLocation = true
     }
@@ -1120,9 +1142,11 @@ class PlacesViewController: ViewController, UISearchBarDelegate, ArticlePopoverV
             viewMode = .list
         }
     }
-    
+
     @objc func updateViewModeToMap() {
         guard viewIfLoaded != nil else {
+            // Remember this action so it can be performed after the view loads
+            afterViewLoadActions.append(.updateViewModeToMap)
             return
         }
         mapListToggle.selectedSegmentIndex = 0
@@ -2129,6 +2153,12 @@ class PlacesViewController: ViewController, UISearchBarDelegate, ArticlePopoverV
     }
     
     @objc func zoomAndPanMapView(toLocation location: CLLocation) {
+        guard viewIfLoaded != nil else {
+            // Remember this action so it can be performed after the view loads
+            afterViewLoadActions.append(.zoomAndPanMapView(location: location))
+            return
+        }
+
         let region = [location.coordinate].wmf_boundingRegion(with: 10000)
         mapRegion = region
         if let searchRegion = currentSearchRegion, isDistanceSignificant(betweenRegion: searchRegion, andRegion: region) {
